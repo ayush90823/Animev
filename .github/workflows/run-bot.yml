@@ -42,5 +42,5 @@ jobs:
           STORAGE_CHANNEL: ${{ secrets.STORAGE_CHANNEL }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
           FIREBASE_URL: ${{ secrets.FIREBASE_URL }}
-          BASE_URL: https://animeverse.serveo.net
+          BASE_URL: https://animeverse.serveousercontent.com
         run: python main.py
