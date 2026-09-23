@@ -6,6 +6,7 @@ import urllib.parse
 import asyncio
 import math
 import time
+from collections import OrderedDict
 from contextlib import asynccontextmanager
 
 import aiohttp
@@ -50,11 +51,11 @@ pyro = Client(
     in_memory=True,
     no_updates=True,
     sleep_threshold=60,
-    max_concurrent_transmissions=8,
+    max_concurrent_transmissions=4,  # 0.25GB RAM tier ke liye kam kiya (pehle 8 tha)
 )
 
-# MESSAGE CACHE
-message_cache: dict = {}
+# MESSAGE CACHE (bounded — low-RAM ke liye purane entries auto-evict honge)
+message_cache: OrderedDict = OrderedDict()
 MESSAGE_CACHE_LIMIT = 50  # max 50 messages cache mein
 
 # ── IN-MEMORY USER SETUP STORE ────────────────────────
@@ -512,6 +513,7 @@ async def stream_file(msg_id: int, filename: str, code: str, request: Request, d
 
     if msg_id in message_cache:
         message = message_cache[msg_id]
+        message_cache.move_to_end(msg_id)  # LRU: recently used ko end pe rakho
     else:
         try:
             # Main pyro server instance se call ho raha hai bina kisi peer loss ke
@@ -519,6 +521,8 @@ async def stream_file(msg_id: int, filename: str, code: str, request: Request, d
             if not message or message.empty:
                 raise ValueError("Empty message from Telegram")
             message_cache[msg_id] = message
+            if len(message_cache) > MESSAGE_CACHE_LIMIT:
+                message_cache.popitem(last=False)  # sabse purana entry hata do (RAM bounded rakhne ke liye)
         except Exception as e:
             logger.error(f"Media extraction crash for msg_id {msg_id}: {e}")
             raise HTTPException(status_code=404, detail="Media extraction failed from Telegram Storage.")
