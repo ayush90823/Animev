@@ -21,9 +21,15 @@ jobs:
       - run: pip install -r requirements.txt
       - run: playwright install --with-deps chromium
 
+      - name: Set up Serveo SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVEO_SSH_KEY }}" > ~/.ssh/serveo_key
+          chmod 600 ~/.ssh/serveo_key
+
       - name: Start Serveo tunnel (background)
         run: |
-          nohup ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 \
+          nohup ssh -i ~/.ssh/serveo_key -o StrictHostKeyChecking=no -o ServerAliveInterval=30 \
             -R animeverse:80:localhost:8000 serveo.net > serveo.log 2>&1 &
           sleep 5
           cat serveo.log
