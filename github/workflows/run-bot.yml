@@ -1,0 +1,40 @@
+name: run-bot
+on:
+  schedule:
+    - cron: '0 */5 * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: telegram-bot
+  cancel-in-progress: true
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 290
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: pip install -r requirements.txt
+      - run: playwright install --with-deps chromium
+
+      - name: Start Serveo tunnel (background)
+        run: |
+          nohup ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 \
+            -R animeverse:80:localhost:8000 serveo.net > serveo.log 2>&1 &
+          sleep 5
+          cat serveo.log
+
+      - name: Run bot
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          API_ID: ${{ secrets.API_ID }}
+          API_HASH: ${{ secrets.API_HASH }}
+          STORAGE_CHANNEL: ${{ secrets.STORAGE_CHANNEL }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          FIREBASE_URL: ${{ secrets.FIREBASE_URL }}
+          BASE_URL: https://animeverse.serveo.net
+        run: python main.py
